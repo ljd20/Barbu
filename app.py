@@ -308,5 +308,4 @@ def handle_claim_cards(data):
     socketio.emit('update_center_cards', {'center_cards': game.Rounds.center_cards}, room='game_room')
 
 if __name__ == '__main__':
-    port = int(os.getenv('PORT', 5000))
-    socketio.run(app, host='0.0.0.0', port=port, debug=True)
+    app.run()
