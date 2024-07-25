@@ -17,9 +17,9 @@ class Deck:
 
     def populate(self):
         suits = ["hearts", "clubs", "diamonds", "spades"]
-        numbers = ["king"] #["2", "3", "4", "5", "6", "7", "8", "9", "10", "jack", "queen", "king", "ace"]
+        numbers = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "jack", "queen", "king", "ace"]
         self.cards = list(product(numbers, suits))
-        # self.cards.remove(('10', 'diamonds'))
+        self.cards.remove(('10', 'diamonds'))
 
     def shuffle_deck(self):
         shuffle(self.cards)
