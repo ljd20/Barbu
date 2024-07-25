@@ -4,7 +4,6 @@ from flask_socketio import SocketIO, emit, join_room, leave_room
 from itertools import product
 from random import shuffle
 import os
-import waitress
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -309,5 +308,4 @@ def handle_claim_cards(data):
     socketio.emit('update_center_cards', {'center_cards': game.Rounds.center_cards}, room='game_room')
 
 if __name__ == '__main__':
-    # Use waitress to serve the app
-    waitress.serve(app, host='0.0.0.0', port=5000)
+    socketio.run(app, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
