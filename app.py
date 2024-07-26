@@ -43,31 +43,36 @@ class Rounds:
 
     def round_types(self):
         return {
-            "barbu": {('king', 'spades'): 50},
-            "queens": {('queen', 'hearts'): 20, ('queen', 'diamonds'): 20, ('queen', 'clubs'): 20, ('queen', 'spades'): 20},
-            "folds":  5,
-            "first_and_last": 20,
-            "hearts": {('2', 'hearts'): 5, ('3', 'hearts'): 5, ('4', 'hearts'): 5, ('5', 'hearts'): 5, ('6', 'hearts'): 5, ('7', 'hearts'): 5, ('8', 'hearts'): 5, ('9', 'hearts'): 5, ('10', 'hearts'): 5, ('jack', 'hearts'): 5, ('queen', 'hearts'): 5, ('king', 'hearts'): 5, ('ace', 'hearts'): 5}
+            "Queens": {('queen', 'hearts'): 20, ('queen', 'diamonds'): 20, ('queen', 'clubs'): 20, ('queen', 'spades'): 20},
+            "First and Last": 20,
+            "Hearts": {('2', 'hearts'): 5, ('3', 'hearts'): 5, ('4', 'hearts'): 5, ('5', 'hearts'): 5, ('6', 'hearts'): 5, ('7', 'hearts'): 5, ('8', 'hearts'): 5, ('9', 'hearts'): 5, ('10', 'hearts'): 5, ('jack', 'hearts'): 5, ('queen', 'hearts'): 5, ('king', 'hearts'): 5, ('ace', 'hearts'): 5},
+            "Folds":  5,
+            "Barbu": {('king', 'spades'): 50}
         }
 
     def set_round_type(self, round_type):
         self.type = round_type
         self.available_round_types.discard(round_type)  # Remove the selected round type from the available types
         print(f"Round type set to: {self.type}")
+        if not self.available_round_types:
+            self.game.is_last_round = True  # Mark this round as the last round
+
 
     def get_available_round_types(self):
         return list(self.available_round_types)
 
     def calculate_scores(self):
         types = self.round_types()
-        if self.type == "folds":
+        if self.type == "Folds":
             self.calculate_folds(types)
-        elif self.type == "first_and_last":
+        elif self.type == "First and Last":
             self.calculate_first_and_last(types)
         else:
             for player_id, claims in self.players_folds.items():
                 for claim in claims:
                     for card in claim:
+                        print(f"type {self.type}")
+                        print(f"types in type {self.type in types}]")
                         if self.type in types and card in types[self.type]:
                             self.scores[player_id] += types[self.type][card]
 
@@ -124,6 +129,14 @@ class Rounds:
         self.cards_played_by_all = set()
         self.claims_received.clear()
 
+        if self.game.is_last_round:
+            self.game.end_game()  # End the game if this was the last round
+        else:
+            # Start a new round if it's not the last round
+            self.game.deal_cards()
+            socketio.emit('new_round', {'player_hands': self.game.player_hands, 'center_cards': self.center_cards, 'current_turn': self.current_turn}, room='game_room')
+
+
 
 class Game:
     def __init__(self):
@@ -132,6 +145,7 @@ class Game:
         self.player_hands = {}
         self.players = {}
         self.Rounds = Rounds(self)
+        self.is_last_round = False
 
     def add_player(self, sid):
         if sid not in self.players:
@@ -205,6 +219,22 @@ class Game:
         current_index = player_ids.index(current_player_id)
         self.Rounds.current_turn = player_ids[(current_index + 1) % len(player_ids)]
 
+    def end_game(self):
+        print("Game Over. Final scores:")
+        socketio.emit('game_over', {'scores': self.Rounds.scores}, room='game_room')
+
+    def reset_game(self):
+        self.deck = Deck()
+        self.next_player_id = 1
+        self.player_hands = {}
+        self.players = {}
+        self.Rounds = Rounds(self)
+        self.rounds_played = []
+        self.is_last_round = False
+        print("Game reset. Ready to start a new game.")
+        
+        socketio.emit('game_reset', room='game_room')
+
 game = Game()
 connected_clients = {}
 
@@ -222,6 +252,11 @@ def handle_disconnect():
     if request.sid in connected_clients:
         del connected_clients[request.sid]
         print(f"Client disconnected: {request.sid}. Total clients: {len(connected_clients)}")
+
+@app.route('/restart_game', methods=['POST'])
+def restart_game():
+    game.reset_game()
+    return jsonify({"status": "Game restarted"})
 
 @app.route('/start_game', methods=['POST'])
 def start_game():
@@ -264,7 +299,7 @@ def handle_start_round(data):
     round_type = data.get('round_type')
     player_id = data.get('player_id')
     game.Rounds.current_turn = player_id
-    game.Rounds.initial_player = player_id
+    game.Rounds.initial_player_id = player_id
     if not round_type:
         print("No round type selected.")
         return
