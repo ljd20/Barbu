@@ -47,7 +47,8 @@ class Rounds:
             "First and Last": 20,
             "Hearts": {('2', 'hearts'): 5, ('3', 'hearts'): 5, ('4', 'hearts'): 5, ('5', 'hearts'): 5, ('6', 'hearts'): 5, ('7', 'hearts'): 5, ('8', 'hearts'): 5, ('9', 'hearts'): 5, ('10', 'hearts'): 5, ('jack', 'hearts'): 5, ('queen', 'hearts'): 5, ('king', 'hearts'): 5, ('ace', 'hearts'): 5},
             "Folds":  5,
-            "Barbu": {('king', 'spades'): 50}
+            "Barbu": {('king', 'spades'): 50},
+            "Everything Everywhere all at once": 0
         }
 
     def set_round_type(self, round_type):
@@ -63,7 +64,18 @@ class Rounds:
 
     def calculate_scores(self):
         types = self.round_types()
-        if self.type == "Folds":
+        if self.type == "Everything Everywhere all at once":
+            self.calculate_folds(types)
+            self.calculate_first_and_last(types)
+            for type_round in ["Queens", "Hearts", "Barbu"]:
+                for player_id, claims in self.players_folds.items():
+                    for claim in claims:
+                        for card in claim:
+                            print(f"type {type_round}")
+                            print(f"types in type {type_round in types}]")
+                            if type_round in types and card in types[self.type]:
+                                self.scores[player_id] += types[self.type][card]
+        elif self.type == "Folds":
             self.calculate_folds(types)
         elif self.type == "First and Last":
             self.calculate_first_and_last(types)
